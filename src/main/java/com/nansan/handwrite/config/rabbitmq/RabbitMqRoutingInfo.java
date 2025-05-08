@@ -1,4 +1,4 @@
-package com.nansan.handwrite.config;
+package com.nansan.handwrite.config.rabbitmq;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

@@ -4,63 +4,58 @@ import java.util.List;
 
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import com.nansan.handwrite.config.RabbitMqPublisher;
-import com.nansan.handwrite.domain.handwrite.HandwriteRecognitionEntity;
+import com.nansan.handwrite.config.mongodb.HandwriteRecognitionDocument;
+import com.nansan.handwrite.config.rabbitmq.RabbitMqPublisher;
 import com.nansan.handwrite.domain.handwrite.dto.HandwriteRequestDto;
 import com.nansan.handwrite.domain.handwrite.dto.HandwriteResponseDto;
-import com.nansan.handwrite.domain.handwrite.repository.HandwriteRecognitionRepository;
+import com.nansan.handwrite.domain.handwrite.repository.HandwriteRecognitionMongoRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class HandwriteService {
-	private final static int TRAIN_AMOUNT = 10;
-	private HandwriteRecognitionRepository handwriteRepository;
-	private RabbitMqPublisher rabbitMqTemplate;
 
-	@Transactional
-	public void save(HandwriteRequestDto handwriteRequestDto) {
+	private final static int TRAIN_AMOUNT = 1;
+	private final HandwriteRecognitionMongoRepository handwriteRepository;
+	private final RabbitMqPublisher rabbitMqTemplate;
+
+	public void save(HandwriteRequestDto dto) {
 		try {
-			HandwriteRecognitionEntity handwriteRecognition = HandwriteRecognitionEntity.builder()
-				.dto(handwriteRequestDto)
-				.build();
-			handwriteRepository.save(handwriteRecognition);
+			HandwriteRecognitionDocument document = HandwriteRecognitionDocument.fromDto(dto);
+			handwriteRepository.save(document);
 		} catch (Exception e) {
-			log.error(e.getMessage());
+			log.error("Failed to save handwrite: {}", e.getMessage());
 		}
 	}
 
-	@Transactional
 	public HandwriteResponseDto findAllHandwrites() {
-		return HandwriteResponseDto.fromEntities(handwriteRepository.findAll());
+		return HandwriteResponseDto.fromDocuments(handwriteRepository.findAll());
 	}
 
-	@Transactional
 	public HandwriteResponseDto findAllUntrainedHandwrites() {
-		List<HandwriteRecognitionEntity> handwrites = handwriteRepository.findAllByIsTrainedFalse();
-
-		for (HandwriteRecognitionEntity handwrite : handwrites) {
-			handwrite.setTrained(true);
+		List<HandwriteRecognitionDocument> untrained = handwriteRepository.findAllByIsTrainedFalse();
+		for (HandwriteRecognitionDocument doc : untrained) {
+			doc.setTrained(true);
 		}
-		return HandwriteResponseDto.fromEntities(handwrites);
+		handwriteRepository.saveAll(untrained);
+		return HandwriteResponseDto.fromDocuments(untrained);
 	}
 
-	@Transactional
 	public int getUnTrainedHandwriteCount() {
 		return handwriteRepository.countByIsTrainedFalse();
 	}
 
-	@Transactional
-	@Scheduled(cron = "0 */30 * * * *")
+	@Scheduled(cron = "0 */1 * * * *")
 	public void publishBatchEvent() {
-		int untrainedCount = handwriteRepository.countByIsTrainedFalse();
-		if (untrainedCount > TRAIN_AMOUNT) {
-			rabbitMqTemplate.sendToPersonal("work!");
+		log.info("⏰ batch event");
+		int untrainedCount = getUnTrainedHandwriteCount();
+		if (untrainedCount >= TRAIN_AMOUNT) {
+			rabbitMqTemplate.sendToPersonal("handwrite training");
+			log.info("✅ handwrite training finished");
 		}
 	}
 }

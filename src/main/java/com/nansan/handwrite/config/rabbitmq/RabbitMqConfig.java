@@ -1,4 +1,4 @@
-package com.nansan.handwrite.config;
+package com.nansan.handwrite.config.rabbitmq;
 
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;

@@ -3,7 +3,8 @@ package com.nansan.handwrite.domain.handwrite.dto;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import com.nansan.handwrite.domain.handwrite.HandwriteRecognitionEntity;
+import com.nansan.handwrite.config.mongodb.HandwriteRecognitionDocument;
+import com.nansan.handwrite.model.ink.InkWrapper;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -22,18 +23,15 @@ public class HandwriteResponseDto {
 	public static class HandwriteRecord {
 		private Long userId;
 		private int answer;
-		private String ink;
+		private InkWrapper ink;
 	}
 
-	public static HandwriteResponseDto fromEntities(List<HandwriteRecognitionEntity> entities) {
-		List<HandwriteRecord> records = entities.stream()
-			.map(entity -> new HandwriteRecord(
-				entity.getUserId(),
-				entity.getAnswer(),
-				entity.getInk()
-			))
+	public static HandwriteResponseDto fromDocuments(List<HandwriteRecognitionDocument> documents) {
+		List<HandwriteRecord> records = documents.stream()
+			.map(doc -> new HandwriteRecord(doc.getUserId(), doc.getAnswer(), doc.getInk()))
 			.collect(Collectors.toList());
 
 		return new HandwriteResponseDto(records);
 	}
 }
+

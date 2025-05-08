@@ -1,4 +1,4 @@
-package com.nansan.handwrite.config;
+package com.nansan.handwrite.config.rabbitmq;
 
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
